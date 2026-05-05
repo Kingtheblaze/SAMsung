@@ -1,6 +1,6 @@
 from tree_sitter import Language, Parser
 import tree_sitter_python as tspython
-from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate
 import json
 import os
@@ -10,10 +10,9 @@ load_dotenv()
 
 class DiffAnalyzer:
     def __init__(self):
-        # Initialize tree-sitter for Python
         self.PY_LANGUAGE = Language(tspython.language())
         self.parser = Parser(self.PY_LANGUAGE)
-        self.llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0)
+        self.llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
 
     def parse_ast(self, code: str):
         if not code:
@@ -22,12 +21,6 @@ class DiffAnalyzer:
         return tree.root_node.sexp()
 
     def analyze_diff(self, diff: str, context: dict) -> list:
-        """
-        Detects behavioral contract violations using AST comparison and LLM reasoning.
-        """
-        # In a real scenario, we'd extract old/new code from the diff.
-        # For the hackathon demo, we'll assume the diff contains enough info or we fetch it.
-        
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are an AST-level code reviewer. Given:
             1. The code diff (text-based)
@@ -70,8 +63,3 @@ class DiffAnalyzer:
             findings = []
 
         return findings
-
-if __name__ == "__main__":
-    # analyzer = DiffAnalyzer()
-    # print(analyzer.analyze_diff("dummy diff", {"related_content": {}}))
-    pass

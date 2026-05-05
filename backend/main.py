@@ -32,10 +32,49 @@ github_client = GitHubClient()
 
 # Store reports in memory for hackathon demo
 reports = {}
+MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() == "true"
 
 async def run_pipeline(pr_url: str):
-    print(f"Starting pipeline for {pr_url}")
+    print(f"Starting pipeline for {pr_url} (Mock Mode: {MOCK_MODE})")
     
+    pr_id = pr_url.split("/")[-1]
+    
+    if MOCK_MODE:
+        import asyncio
+        await asyncio.sleep(3)
+        report = {
+            "overall_score": 72,
+            "risk_level": "MEDIUM",
+            "findings": [
+                {
+                    "severity": "HIGH",
+                    "confidence": 91,
+                    "category": "OWASP-A03:Injection",
+                    "file": "src/api/user_service.py",
+                    "line": 45,
+                    "message": "Raw SQL query detected. Potential SQL injection via user input.",
+                    "fix": "Use parameterized queries or an ORM like SQLAlchemy."
+                },
+                {
+                    "severity": "MEDIUM",
+                    "confidence": 78,
+                    "category": "BehavioralContractViolation",
+                    "file": "src/auth/manager.py",
+                    "line": 122,
+                    "message": "Function validate_token() now returns None instead of throwing AuthError, breaking 2 downstream callers.",
+                    "fix": "Update callers to handle None or restore the exception throwing behavior."
+                }
+            ],
+            "agent_chain": [
+                {"agent": "Context Collector", "reasoning": "Identified database access layer and authentication modules as high-risk areas."},
+                {"agent": "Diff Analyzer", "reasoning": "Detected signature change in validate_token() that deviates from documented ARCHITECTURE.md contract."},
+                {"agent": "Security Auditor", "reasoning": "Flagged raw string formatting in SQL query as a potential OWASP-A03 violation."}
+            ]
+        }
+        reports[pr_id] = report
+        print(f"Mock report generated for PR {pr_id}")
+        return
+
     # 1. Fetch Diff
     diff = github_client.fetch_pr_diff(pr_url)
     if not diff:
@@ -45,8 +84,7 @@ async def run_pipeline(pr_url: str):
     # 2. Collect Context
     context = context_collector.collect_context(pr_url, diff)
     
-    # 3. Analyze Diff & Audit Security (Parallel)
-    # For simplicity, running sequentially first, can use asyncio.gather later
+    # 3. Analyze Diff & Audit Security
     diff_findings = diff_analyzer.analyze_diff(diff, context)
     security_findings = security_auditor.audit_security(diff)
     
@@ -55,11 +93,7 @@ async def run_pipeline(pr_url: str):
     report = report_synthesizer.synthesize_report(all_findings)
     
     # Store report
-    pr_id = pr_url.split("/")[-1]
     reports[pr_id] = report
-    
-    # 5. Post GitHub Comments
-    # TODO: implement github_client.post_comment
     print(f"Report generated for PR {pr_id}: {report['overall_score']}/100")
 
 @app.get("/")

@@ -1,4 +1,4 @@
-from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate
 import json
 import os
@@ -8,12 +8,9 @@ load_dotenv()
 
 class ReportSynthesizer:
     def __init__(self):
-        self.llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0)
+        self.llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
 
     def synthesize_report(self, all_findings: list) -> dict:
-        """
-        Aggregates findings from all agents and produces a unified report.
-        """
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are a code review synthesizer. Given findings from multiple specialized agents (Context, Diff, Security),
             produce a unified report:
@@ -47,7 +44,6 @@ class ReportSynthesizer:
             report = json.loads(content)
         except Exception as e:
             print(f"Error parsing ReportSynthesizer response: {e}")
-            # Fallback report
             report = {
                 "overall_score": 0,
                 "risk_level": "UNKNOWN",
@@ -55,17 +51,4 @@ class ReportSynthesizer:
                 "agent_chain": []
             }
 
-        # Double check overall score calculation if LLM didn't provide a good one
-        if "overall_score" not in report or report["overall_score"] == 0:
-            critical_count = len([f for f in all_findings if f.get("severity") == "CRITICAL"])
-            high_count = len([f for f in all_findings if f.get("severity") == "HIGH"])
-            score = max(0, 100 - (critical_count * 30) - (high_count * 15))
-            report["overall_score"] = score
-            report["risk_level"] = "CRITICAL" if critical_count > 0 else ("HIGH" if high_count > 0 else "MEDIUM")
-
         return report
-
-if __name__ == "__main__":
-    # synthesizer = ReportSynthesizer()
-    # print(synthesizer.synthesize_report([]))
-    pass

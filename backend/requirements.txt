@@ -3,8 +3,9 @@ uvicorn
 python-dotenv
 anthropic
 requests
+langchain-google-genai
+google-generativeai
 langchain
-langchain-anthropic
 langchain-community
 chromadb
 tree-sitter

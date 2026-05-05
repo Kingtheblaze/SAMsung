@@ -1,7 +1,7 @@
 from langchain_community.vectorstores import Chroma
-from langchain_anthropic import AnthropicEmbeddings
+from langchain_community.embeddings import FakeEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate
 import json
 import os
@@ -11,24 +11,23 @@ load_dotenv()
 
 class SecurityAuditor:
     def __init__(self):
-        self.embeddings = AnthropicEmbeddings()
-        self.llm = ChatAnthropic(model="claude-3-5-sonnet-20240620", temperature=0)
+        self.embeddings = FakeEmbeddings(size=1536)
+        self.llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0)
         self.db_path = "./chroma_db"
         self.kb = self._setup_kb()
 
     def _setup_kb(self):
-        # In a real app, this would persist and only load if exists
         owasp_docs = [
-            "A01: Broken Access Control - Failure to enforce restrictions on what authenticated users can do.",
-            "A02: Cryptographic Failures - Weaknesses in data encryption, often leading to sensitive data exposure.",
-            "A03: Injection - Sending untrusted data as part of a command or query (e.g., SQL, NoSQL).",
-            "A04: Insecure Design - Risks related to design and architectural flaws.",
-            "A05: Security Misconfiguration - Insecure default configurations or incomplete configurations.",
-            "A06: Vulnerable and Outdated Components - Using software with known vulnerabilities.",
-            "A07: Identification and Authentication Failures - Weaknesses in user identity confirmation.",
-            "A08: Software and Data Integrity Failures - Assumptions made about software updates or data without verification.",
-            "A09: Security Logging and Monitoring Failures - Insufficient logging to detect or respond to breaches.",
-            "A10: Server-Side Request Forgery (SSRF) - Forcing the server to make requests to unintended locations."
+            "A01: Broken Access Control...",
+            "A02: Cryptographic Failures...",
+            "A03: Injection...",
+            "A04: Insecure Design...",
+            "A05: Security Misconfiguration...",
+            "A06: Vulnerable and Outdated Components...",
+            "A07: Identification and Authentication Failures...",
+            "A08: Software and Data Integrity Failures...",
+            "A09: Security Logging and Monitoring Failures...",
+            "A10: Server-Side Request Forgery (SSRF)..."
         ]
         
         if not os.path.exists(self.db_path):
@@ -40,15 +39,10 @@ class SecurityAuditor:
             return Chroma(persist_directory=self.db_path, embedding_function=self.embeddings)
 
     def audit_security(self, diff: str) -> list:
-        """
-        Maps changes to OWASP Top 10 using RAG.
-        """
-        # 1. RAG: Retrieve relevant OWASP docs
         query = f"Security vulnerabilities related to: {diff[:500]}"
         docs = self.kb.similarity_search(query, k=3)
         owasp_context = "\n\n".join([d.page_content for d in docs])
 
-        # 2. Ask Claude to analyze
         prompt = ChatPromptTemplate.from_messages([
             ("system", """You are a security auditor. Given:
             1. A code diff
@@ -87,8 +81,3 @@ class SecurityAuditor:
             findings = []
 
         return findings
-
-if __name__ == "__main__":
-    # auditor = SecurityAuditor()
-    # print(auditor.audit_security("dummy diff with sql query"))
-    pass
