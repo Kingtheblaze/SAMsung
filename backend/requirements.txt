@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-dotenv
+anthropic
+requests
+langchain
+langchain-anthropic
+langchain-community
+chromadb
+tree-sitter
+tree-sitter-python
+pydantic
+asyncio
